@@ -15,6 +15,13 @@ const isLoggedIn = (req, res, next) => {
         let sessionId = req.cookies['sessionId'];
 
         if (sessionId in sessions) {
+            /* req.user looks like:
+             *  {
+             *      username,
+             *      salt,
+             *      hash
+             *  }
+             */
             req.user = sessions[sessionId];
             return next();
 

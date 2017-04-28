@@ -5,24 +5,49 @@ let mongoose = require('mongoose')
 let md5 = require('md5');
 
 const getArticles = (req, res) => {
+    /*
+     * Returns articles by the user or anyone the user is following. 
+     * Returns 10 at first, and the rest is mamanged by pagination.
+     */
+
     let query;
 
     if (req.params.id) {
         if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            // Returns articles with the id or by the author
             query = models.Article.find().or([
                 {author: req.params.id}, 
                 {_id: mongoose.Types.ObjectId(req.params.id)}
             ]);
         } else {
+            // Returns articles by the user specified by the id.
             query = models.Article.find({author: req.params.id});
         }
-    } else {
-        query = models.Article.find();
-    } 
 
-    query.exec(function(err, articles) {
-        res.send({articles});
-    })
+        query.exec(function(err, articles) {
+            res.send({articles});
+        })
+
+    } else {
+        // Return all owned or following articles.
+        
+        models.Profile.find({username: req.user.username}).exec((err, profiles) => {
+            if (err) {
+                return console.error(err);
+            } else {
+                let authors = [req.user.username, ...profiles[0].following];
+
+                console.log('authors: ' + authors);
+
+                models.Article.find()
+                    .where('author')
+                    .in(authors)
+                    .exec((err, articles) => {
+                        res.send({articles});
+                })
+            }
+        })
+    } 
 }
 
 const createComment = (req, res, articleId) => {
