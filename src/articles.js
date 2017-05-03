@@ -1,6 +1,7 @@
 let index = require('../index');
 let models = require('./db/models.js');
 let isLoggedIn = require('./auth.js').isLoggedIn;
+let uploadImage = require('./uploadCloudinary')
 let mongoose = require('mongoose')
 let md5 = require('md5');
 
@@ -165,11 +166,24 @@ const postArticle = (req, res) => {
     })
     */
     
-    let newArticle = new models.Article({
-        author: req.user.username,
-        date: new Date(),
-        text: req.body.text,
-    })
+
+    let newArticle;
+    if (req.fileurl) {
+        // There was an image in this article.
+        newArticle = new models.Article({
+            author: req.user.username,
+            img: req.fileurl,
+            date: new Date(),
+            text: req.body.text,
+        })
+    } else {
+        // Text only article.
+        newArticle = new models.Article({
+            author: req.user.username,
+            date: new Date(),
+            text: req.body.text,
+        })
+    }
 
     newArticle.save(function(err, newArticle) {
         if (err) {
@@ -186,5 +200,5 @@ var exports =  module.exports = {};
 exports.endpoints = function(app) {
 	app.get('/articles/:id*?', isLoggedIn, getArticles),
 	app.put('/articles/:id', isLoggedIn, putArticles),
-	app.post('/article', isLoggedIn, postArticle)
+	app.post('/article', isLoggedIn, uploadImage('articleImage'), postArticle)
 }

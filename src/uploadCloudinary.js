@@ -36,8 +36,23 @@ const doUpload = (publicId, req, res, next) => {
 // Read this function carefully so you understand
 // what it is doing!
 const uploadImage = (publicId) => (req, res, next) =>
-     multer().single('image')(req, res, () => 
-               doUpload(publicId, req, res, next))
+    multer().single('image')(req, res, (err) => {
+
+        console.log('multer file');
+        console.log(req.file);
+
+        if (req.file) {
+            if (err) {
+                // Error uploading image
+                console.log(err);
+                next();
+            } else {
+                doUpload(publicId, req, res, next)
+            }
+        } else {
+            next();
+        }
+    })
 
 ///////////////////////////////////////////////////////////////////////////////
 // These three functions are examples to validate that uploading works
