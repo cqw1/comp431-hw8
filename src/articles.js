@@ -37,8 +37,6 @@ const getArticles = (req, res) => {
             } else {
                 let authors = [req.user.username, ...profiles[0].following];
 
-                console.log('authors: ' + authors);
-
                 models.Article.find()
                     .where('author')
                     .in(authors)

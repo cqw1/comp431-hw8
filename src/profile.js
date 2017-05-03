@@ -165,8 +165,25 @@ const getAvatars = (req, res) => {
 }
 
 const putAvatar = (req, res) => {
-    // TODO: still stubbed
-    res.send({username: req.user.username, avatar: 'stubbed avatar'});
+    models.Profile.find({username: req.user.username})
+        .exec((err, profiles) => {
+            if (err) {
+                return console.error(err);
+            } else {
+                profiles[0].avatar = req.fileurl;
+
+                // Save and return 
+                profiles[0].save((err, profile) => { 
+                    if (err) {
+                        return console.error(err);
+                    }
+                    return res.send({
+                        username: req.user.username, 
+                        avatar: req.fileurl
+                    });
+                })
+            }
+        })
 }
 
 const getDob = (req, res) => {
@@ -197,8 +214,7 @@ exports.endpoints = function(app) {
     app.get('/zipcode/:user?', isLoggedIn, getZipcode),
     app.put('/zipcode', isLoggedIn, putZipcode),
     app.get('/avatars/:user?', isLoggedIn, getAvatars),
-    //app.put('/avatar', putAvatar),
+    app.put('/avatar', isLoggedIn, uploadImage('avatar'), putAvatar),
     app.get('/dob', isLoggedIn, getDob),
-    app.get('/', getIndex),
-    app.put('/avatar', isLoggedIn, uploadImage('avatar'), putAvatar)
+    app.get('/', getIndex)
 }

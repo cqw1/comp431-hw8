@@ -1,7 +1,10 @@
 let md5 = require('md5');
 let index = require('../index');
 let models = require('./db/models.js');
-let sessions = require('../index.js').sessions;
+if (!process.env.REDIS_URL) {
+    process.env.REDIS_URL = 'redis://h:pbe9de9be7a74cb9babb53fcd0fe5f291a0aa702eb0a7340f2c91c60cf1d81729@ec2-34-206-56-163.compute-1.amazonaws.com:40819'
+}
+let redis = require('redis').createClient(process.env.REDIS_URL)
 
 let passport = index.passport;
 
@@ -14,21 +17,22 @@ const isLoggedIn = (req, res, next) => {
     if (req.cookies['sessionId']) {
         let sessionId = req.cookies['sessionId'];
 
-        if (sessionId in sessions) {
-            /* req.user looks like:
-             *  {
-             *      username,
-             *      salt,
-             *      hash
-             *  }
-             */
-            req.user = sessions[sessionId];
-            return next();
-
-        }
+        redis.hgetall(sessionId, function(err, userObj) {
+            if (!err) {
+                /* req.user looks like:
+                 *  {
+                 *      username,
+                 *      salt,
+                 *      hash
+                 *  }
+                 */
+                req.user = userObj;
+                return next();
+            }
+        })
+    } else {
+        return res.sendStatus(401);
     }
-    
-    return res.sendStatus(401);
 }
 exports.isLoggedIn = isLoggedIn;
 
@@ -38,9 +42,18 @@ const postLogin = (req, res) => {
         return res.sendStatus(400);
     }
 
+    console.log('username: ' + req.body.username);
+    console.log('password: ' + req.body.password);
+
     models.User.find({username: req.body.username}).exec(function(err, users) {
+        console.log('users: ' + users);
         if (users.length > 0) {
             let hash = md5(req.body.password + users[0].salt);
+
+            console.log('salt: ' + users[0].salt);
+            console.log('calculated hash: ' + hash);
+            console.log('user hash: ' + users[0].hash);
+
             if (users[0].hash == hash) {
                 loginSuccess(req, res);
             } else {
@@ -89,7 +102,11 @@ const postRegister = (req, res) => {
 
 const putLogout = (req, res) => {
     // Clear session and cookie
-    delete sessions[req.cookies['sessionId']];
+
+    redis.del(req.cookies['sessionId'], function(err, count) {});
+
+
+
     res.clearCookie('sessionId');
 
     return res.send('OK');
@@ -117,7 +134,7 @@ const putPassword = (req, res) => {
                     return console.error(err);
                 }
 
-                sessions[req.cookies['sessionId']] = newUser;
+                redis.hmset(req.cookies['sessionId'], newUser);
                 return res.send({
                     username: req.user.username, 
                     result: 'success'
@@ -165,7 +182,7 @@ const loginSuccess = (req, res) => {
 
     models.User.find({username: req.body.username}).exec(function(err, users) {
         if (users.length > 0) {
-            sessions[sessionId] = users[0];
+            redis.hmset(sessionId, users[0]);
 
             // cookie lasts for 1 hour
             res.cookie('sessionId', sessionId,
@@ -183,15 +200,19 @@ const checkLoggedIn = (req, res) => {
     if (req.cookies['sessionId']) {
         let sessionId = req.cookies['sessionId'];
 
-        if (sessionId in sessions) {
-            return res.send({
-                isLoggedIn: true,
-                username: sessions[sessionId].username,
-            })
-        }
+        redis.hgetall(sessionId, function(err, userObj) {
+            if (!err) {
+                return res.send({
+                    isLoggedIn: true,
+                    username: userObj.username,
+                })
+            } else {
+                return res.send({isLoggedIn: false});
+            }
+        })
+    } else {
+        return res.send({isLoggedIn: false});
     }
-
-    return res.send({isLoggedIn: false});
 }
 
 exports.endpoints = function(app) {

@@ -10,9 +10,6 @@ if (process.env.NODE_ENV !== 'production') {
 
 var exports = module.exports = {};
 
-var sessions =  {}
-exports.sessions = sessions;
-
 exports.passport = passport;
 
 const GOOGLE_CLIENT_ID = '204622054772-55ccni4rg7ikq1kpso8l2uai0r639id7.apps.googleusercontent.com';
