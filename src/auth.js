@@ -42,20 +42,24 @@ const postLogin = (req, res) => {
         return res.sendStatus(400);
     }
 
-    console.log('username: ' + req.body.username);
-    console.log('password: ' + req.body.password);
-
     models.User.find({username: req.body.username}).exec(function(err, users) {
-        console.log('users: ' + users);
+
         if (users.length > 0) {
             let hash = md5(req.body.password + users[0].salt);
 
-            console.log('salt: ' + users[0].salt);
-            console.log('calculated hash: ' + hash);
-            console.log('user hash: ' + users[0].hash);
-
             if (users[0].hash == hash) {
-                loginSuccess(req, res);
+                //loginSuccess(req, res);
+                let sessionId = md5(secretMessage + req.body.username + Date.now());
+
+                redis.hmset(sessionId, users[0]);
+
+                // cookie lasts for 1 hour
+                res.cookie('sessionId', sessionId,
+                        {maxAge: 3600 * 1000, httpOnly: true});
+
+                let msg = {username: req.body.username, result: 'success'};
+                return res.send(msg);
+
             } else {
                 return res.sendStatus(401);
             }
@@ -160,7 +164,7 @@ const authGoogle = passport.authenticate('google', { scope: [
 //   login page.  Otherwise, the primary route function function will be called,
 //   which, in this example, will redirect the user to the home page.
 const authGoogleCallback = passport.authenticate('google', { 
-    successRedirect: '/login/success',
+    //successRedirect: '/login/success',
     failureRedirect: '/login'
 });
 
@@ -177,10 +181,11 @@ const getUsername = (req) => {
 }
 
 const loginSuccess = (req, res) => {
-    let username = getUsername(req);
-    let sessionId = md5(secretMessage + username + Date.now());
 
-    models.User.find({username: req.body.username}).exec(function(err, users) {
+    let user = req.user;
+    let sessionId = user.username;
+
+    models.User.find({username: user.username}).exec(function(err, users) {
         if (users.length > 0) {
             redis.hmset(sessionId, users[0]);
 
@@ -188,8 +193,10 @@ const loginSuccess = (req, res) => {
             res.cookie('sessionId', sessionId,
                     {maxAge: 3600 * 1000, httpOnly: true});
 
-            let msg = {username: req.body.username, result: 'success'};
-            return res.send(msg);
+            let msg = {username: user.username, result: 'success'};
+            //return res.send(msg);
+            return res.redirect('http://difficult-income.surge.sh');
+
         } else {
             return res.sendStatus(401);
         }
@@ -197,6 +204,7 @@ const loginSuccess = (req, res) => {
 }
 
 const checkLoggedIn = (req, res) => {
+
     if (req.cookies['sessionId']) {
         let sessionId = req.cookies['sessionId'];
 
@@ -221,7 +229,7 @@ exports.endpoints = function(app) {
     app.put('/logout', isLoggedIn, putLogout),
     app.put('/password', isLoggedIn, putPassword),
     app.get('/auth/google', authGoogle),
-    app.get('/auth/google/callback', authGoogleCallback),
+    app.get('/auth/google/callback', authGoogleCallback, loginSuccess),
     app.get('/login/success', loginSuccess),
     app.get('/checkLoggedIn', checkLoggedIn)
 }

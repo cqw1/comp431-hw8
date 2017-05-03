@@ -25,7 +25,7 @@ const getArticles = (req, res) => {
             query = models.Article.find({author: req.params.id});
         }
 
-        query.exec(function(err, articles) {
+        query.sort({'date': -1}).limit(10).exec(function(err, articles) {
             res.send({articles});
         })
 
@@ -41,6 +41,8 @@ const getArticles = (req, res) => {
                 models.Article.find()
                     .where('author')
                     .in(authors)
+                    .sort({'date': -1})
+                    .limit(10)
                     .exec((err, articles) => {
                         res.send({articles});
                 })

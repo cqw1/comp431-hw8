@@ -37,10 +37,6 @@ const doUpload = (publicId, req, res, next) => {
 // what it is doing!
 const uploadImage = (publicId) => (req, res, next) =>
     multer().single('image')(req, res, (err) => {
-
-        console.log('multer file');
-        console.log(req.file);
-
         if (req.file) {
             if (err) {
                 // Error uploading image

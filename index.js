@@ -3,10 +3,16 @@ let bodyParser = require('body-parser')
 let cookieParser = require('cookie-parser')
 let passport = require('passport')
 let GoogleStrategy = require( 'passport-google-oauth2' ).Strategy;
+let models = require('./src/db/models.js');
 
 if (process.env.NODE_ENV !== 'production') {
     require('dot-env');
 }
+
+if (!process.env.REDIS_URL) {
+    process.env.REDIS_URL = 'redis://h:pbe9de9be7a74cb9babb53fcd0fe5f291a0aa702eb0a7340f2c91c60cf1d81729@ec2-34-206-56-163.compute-1.amazonaws.com:40819'
+}
+let redis = require('redis').createClient(process.env.REDIS_URL)
 
 var exports = module.exports = {};
 
@@ -26,11 +32,14 @@ exports.GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET;
 //   have a database of user records, the complete Google profile is
 //   serialized and deserialized.
 passport.serializeUser(function(user, done) {
-    done(null, user);
+    done(null, user.google_id);
 });
 
-passport.deserializeUser(function(obj, done) {
-    done(null, obj);
+passport.deserializeUser(function(google_id, done) {
+
+    models.User.find({google_id: google_id}).exec(function(err, users) {
+        done(err, users[0]);
+    })
 });
 
 // Use the GoogleStrategy within Passport.
@@ -52,23 +61,66 @@ passport.use(new GoogleStrategy({
      * cookies will be created and lead to lost your session
      * if you use it.}))
      */
-    callbackURL: "http://localhost:3000/auth/google/callback",
+    callbackURL: "http://cqw1-comp431-hw8.herokuapp.com/auth/google/callback",
     passReqToCallback   : true
 },
 function(request, accessToken, refreshToken, profile, done) {
     // asynchronous verification, for effect...
+
     process.nextTick(function () {
         // To keep the example simple, the user's Google profile is returned to
         // represent the logged-in user.  In a typical application, you would want
         // to associate the Google account with a user record in your database,
         // and return that user instead.
-        return done(null, profile);
+
+        models.User.find({google_id: profile.id}).exec(function(err, users) {
+
+            if (err) {
+                return done(err);
+            }
+
+            if (users.length > 0) {
+                // User already exists.
+                return done(null, users[0]);
+            } else {
+                // Create a user and profile object to save to db.
+                let newUser = new models.User({
+                    google_id: profile.id,
+                    username: profile.email,
+                })
+
+                let newProfile = new models.Profile({
+                    username: profile.email,
+                    headline: '<headline>',
+                    following: [],
+                    email: profile.email,
+                    zipcode: '<zipcode>',
+                    avatar: 'https://parade.com/wp-content/uploads/2014/03/Why-Do-Stars-All-Look-Almost-the-Same-Size-ftr.jpg'
+                })
+
+                newUser.save((err, newUser) => {
+                    if (err) {
+                        return console.error(err);
+                    }
+
+                    newProfile.save((err, newProfile) => {
+                        if (err) {
+                            return console.error(err);
+                        }
+
+                        return done(null, newUser)
+                    })
+                })
+
+                
+            }
+        })
     });
   }
 ));
 
 const resource = (method, endpoint, payload) => {
-	const url = `http://localhost:3000/${endpoint}`
+	const url = `http://cqw1-comp431-hw8.herokuapp.com/${endpoint}`
 	const options = { method, headers: { 'Content-Type': 'application/json' }}
 	if (payload) options.body = JSON.stringify(payload)
 	return fetch(url, options).then(r => {

@@ -19,6 +19,7 @@ let articleSchema = new mongoose.Schema({
 });
 
 let userSchema = new mongoose.Schema({
+    google_id: String,
     username: String,
     salt: String,
     hash: String    

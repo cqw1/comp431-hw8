@@ -75,7 +75,11 @@ const getEmail = (req, res) => {
         if (err) {
             return console.error(err);
         } else {
-            return res.send({username, email: profiles[0].email});
+            if (profiles[0].email) {
+                return res.send({username, email: profiles[0].email})
+            } else {
+                return res.send({username, email: ''});
+            }
         }
     })
 }
@@ -112,7 +116,11 @@ const getZipcode = (req, res) => {
         if (err) {
             return console.error(err);
         } else {
-            return res.send({username, zipcode: profiles[0].zipcode});
+            if (profiles[0].zipcode) {
+                return res.send({username, zipcode: profiles[0].zipcode});
+            } else {
+                return res.send({username, zipcode: ''});
+            }
         }
     })
 }
@@ -192,10 +200,17 @@ const getDob = (req, res) => {
             if (err) {
                 return console.error(err);
             } else {
-                return res.send({ 
-                    username: req.user.username, 
-                    dob: profiles[0].dob.getTime()
-                });
+                if (profiles[0].dob) {
+                    return res.send({ 
+                        username: req.user.username, 
+                        dob: profiles[0].dob.getTime()
+                    });
+                } else {
+                    return res.send({ 
+                        username: req.user.username, 
+                        dob: ''
+                    });
+                }
             }
         });
 }

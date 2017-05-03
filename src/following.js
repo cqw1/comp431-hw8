@@ -30,7 +30,7 @@ const putFollowing = (req, res) => {
                             return console.error(err);
                         } else if (following.length < 1) {
                             // If user doesn't exist, then send bad request.
-                            return res.send(400);
+                            return res.sendStatus(400);
                         }
 
                         // Add user to following
