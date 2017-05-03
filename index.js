@@ -62,6 +62,7 @@ passport.use(new GoogleStrategy({
      * if you use it.}))
      */
     callbackURL: "http://cqw1-comp431-hw8.herokuapp.com/auth/google/callback",
+    //callbackURL: "http://localhost:3000/auth/google/callback",
     passReqToCallback   : true
 },
 function(request, accessToken, refreshToken, profile, done) {

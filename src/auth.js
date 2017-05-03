@@ -194,8 +194,8 @@ const loginSuccess = (req, res) => {
                     {maxAge: 3600 * 1000, httpOnly: true});
 
             let msg = {username: user.username, result: 'success'};
-            //return res.send(msg);
             return res.redirect('http://difficult-income.surge.sh');
+            //return res.redirect('http://localhost:8080');
 
         } else {
             return res.sendStatus(401);
